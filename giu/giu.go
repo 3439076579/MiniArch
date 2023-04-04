@@ -3,6 +3,7 @@ package giu
 import (
 	"net/http"
 	"strings"
+	"sync"
 )
 
 type HandlerFunc func(c *Context)
@@ -17,6 +18,8 @@ type Engine struct {
 	router *router
 
 	allGroup []*RouterGroup
+
+	pool sync.Pool
 }
 
 func New() *Engine {
@@ -25,6 +28,13 @@ func New() *Engine {
 		engine: e,
 	}
 	e.allGroup = make([]*RouterGroup, 0)
+
+	e.pool = sync.Pool{
+		New: func() interface{} {
+			return new(Context)
+		},
+	}
+
 	return e
 
 }
@@ -33,7 +43,8 @@ func (r *Engine) ServeHTTP(w http.ResponseWriter, request *http.Request) {
 
 	var middleware []HandlerFunc
 
-	ctx := newContext(w, request)
+	ctx := r.pool.Get().(*Context)
+	ctx.newContext(w, request)
 
 	for _, group := range r.allGroup {
 
@@ -45,6 +56,10 @@ func (r *Engine) ServeHTTP(w http.ResponseWriter, request *http.Request) {
 
 	ctx.handlers = middleware
 	r.router.handler(ctx)
+
+	ctx.Clear()
+
+	r.pool.Put(ctx)
 
 }
 

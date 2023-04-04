@@ -23,15 +23,19 @@ type Context struct {
 	index    int
 }
 
-func newContext(w http.ResponseWriter, r *http.Request) *Context {
+func (c *Context) newContext(w http.ResponseWriter, r *http.Request) {
 
-	return &Context{
-		writer:  w,
-		request: r,
-		Path:    r.URL.Path,
-		Method:  r.Method,
-		index:   -1,
+	if c.Keys == nil {
+		c.Keys = make(map[string]interface{})
 	}
+	if c.handlers == nil {
+		c.handlers = make([]HandlerFunc, 0)
+	}
+
+	c.Method = r.Method
+	c.request = r
+	c.Path = r.URL.Path
+	c.writer = w
 
 }
 
@@ -108,4 +112,17 @@ func (c *Context) HTML(code int64, html string) {
 	c.SetHeader("Content-Type", "text/html")
 	c.Status(code)
 	c.writer.Write([]byte(html))
+}
+
+func (c *Context) Clear() {
+
+	c.Method = ""
+	c.Path = ""
+	c.Keys = nil
+	c.writer = nil
+	c.request = nil
+	c.handlers = c.handlers[:0]
+	c.Params = nil
+	c.index = -1
+
 }
