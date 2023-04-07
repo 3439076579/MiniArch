@@ -7,7 +7,7 @@ import (
 	"strings"
 )
 
-type Table interface {
+type Tabler interface {
 	TableName() string
 }
 
@@ -57,8 +57,16 @@ func Parse(model interface{}, dialect dialect.Dialect) *Schema {
 		}
 
 	}
-	StringSet := strings.Split(schema.ModelType, ".")
-	schema.TableName = StringSet[len(StringSet)-1] + "s"
+
+	method, exist := reflect.TypeOf(modelType).MethodByName("TableName")
+
+	if !exist {
+		StringSet := strings.Split(schema.ModelType, ".")
+		schema.TableName = StringSet[len(StringSet)-1] + "s"
+	} else {
+		tmp := method.Func.Call([]reflect.Value{reflect.ValueOf(model)})
+		schema.TableName = tmp[0].String()
+	}
 
 	return schema
 
