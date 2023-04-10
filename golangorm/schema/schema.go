@@ -71,3 +71,7 @@ func Parse(model interface{}, dialect dialect.Dialect) *Schema {
 	return schema
 
 }
+
+func (s *Schema) GetFieldByName(name string) *Field {
+	return s.filedMap[name]
+}

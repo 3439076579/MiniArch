@@ -5,6 +5,7 @@ import (
 	"MiniArch/golangorm/logger"
 	"MiniArch/golangorm/session"
 	"database/sql"
+	"fmt"
 )
 
 type Engine struct {
@@ -70,4 +71,74 @@ func (e *Engine) Transaction(f TxFunc) (result interface{}, err error) {
 
 	return f(s)
 
+}
+
+// b - a
+func difference(a []string, b []string) (diff []string) {
+	tmp := make(map[string]bool)
+	for _, str := range a {
+		tmp[str] = true
+	}
+
+	for _, str := range b {
+		if _, ok := tmp[str]; ok {
+			diff = append(diff, str)
+		}
+
+	}
+	return
+
+}
+
+func (e *Engine) Migrate(value interface{}) error {
+	_, err := e.Transaction(func(s *session.Session) (interface{}, error) {
+		s = s.Model(value)
+		table := s.Table()
+
+		if !s.HasTable() {
+			logger.Error("table does not exist")
+			return nil, s.CreateTable()
+		}
+
+		rows, err := s.Raw(fmt.Sprintf("SELECT * FROM %s LIMIT 1", table.TableName)).QueryRows()
+		if err != nil {
+			logger.Error(err)
+			return nil, err
+		}
+		columns, err := rows.Columns()
+		if err != nil {
+			logger.Error(err)
+			return nil, err
+		}
+		delCol := difference(table.FieldName, columns)
+		addCol := difference(columns, table.FieldName)
+
+		if len(delCol) == 0 {
+			return nil, nil
+		} else {
+			for _, str := range delCol {
+				SQL := fmt.Sprintf("ALTER TABLE %s DROP %s", table.TableName, str)
+				_, err := s.Raw(SQL).Exec()
+				if err != nil {
+					logger.Error(err)
+					return nil, err
+				}
+			}
+		}
+
+		if len(addCol) == 0 {
+			return nil, nil
+		}
+		for _, str := range addCol {
+			SQL := fmt.Sprintf("ALTER TABLE %s ADD %s %s", table.TableName, str, table.GetFieldByName(str).Type)
+			_, err := s.Raw(SQL).Exec()
+			if err != nil {
+				logger.Error(err)
+				return nil, err
+			}
+		}
+		return nil, nil
+	})
+
+	return err
 }
