@@ -14,7 +14,6 @@ type router struct {
 }
 
 func newRouter() *router {
-
 	return &router{
 		roots:    make(map[string]*node),
 		handlers: make(map[string]HandlersChain),
@@ -83,7 +82,6 @@ func (r *router) getRouter(method string, path string) (*node, map[string]string
 			if part[0] == ':' {
 				params[part[1:]] = parts[index]
 			}
-
 			if part[0] == '*' && len(part) > 1 {
 				params[part[1:]] = strings.Join(parts, "/")
 			}
