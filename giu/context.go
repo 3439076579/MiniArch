@@ -8,16 +8,17 @@ import (
 )
 
 type Context struct {
-	writer  http.ResponseWriter
-	request *http.Request
-	Path    string
-	Method  string
+	writer   http.ResponseWriter
+	request  *http.Request
+	Path     string
+	Method   string
+	FullPath string
 
 	mu sync.RWMutex
 
 	Keys       map[string]interface{}
 	StatusCode int64
-	Params     map[string]string
+	Params     []Param
 
 	handlers []HandlerFunc
 	index    int
@@ -108,6 +109,15 @@ func (c *Context) Data(code int64, data []byte) {
 	c.writer.Write(data)
 }
 
+func (c *Context) Param(name string) interface{} {
+	for _, param := range c.Params {
+		if param.Key == name {
+			return param.Value
+		}
+	}
+	return nil
+}
+
 func (c *Context) HTML(code int64, html string) {
 	c.SetHeader("Content-Type", "text/html")
 	c.Status(code)
@@ -124,5 +134,5 @@ func (c *Context) Clear() {
 	c.handlers = c.handlers[:0]
 	c.Params = nil
 	c.index = -1
-
+	c.FullPath = ""
 }

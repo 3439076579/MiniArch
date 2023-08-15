@@ -1,42 +1,43 @@
 package giu
 
-import "strings"
-
-var (
-	httpMethod = []string{"GET", "POST", "PUT", "DELETE", "TRACE", "OPTIONAL"}
+import (
+	"regexp"
 )
 
-type HandlersChain []HandlerFunc
+var (
+	httpMethod    = []string{"GET", "POST", "PUT", "DELETE", "TRACE", "OPTIONAL"}
+	httpMethodReg = `[A-Z]{3,8}`
+)
 
 type router struct {
-	roots    map[string]*node
-	handlers map[string]HandlersChain
+	methodTree trees
 }
 
 func newRouter() *router {
 	return &router{
-		roots:    make(map[string]*node),
-		handlers: make(map[string]HandlersChain),
+		methodTree: NewMethodTree(),
 	}
 }
 
 func (r *router) addRouter(method string, pattern string, handlerFunc ...HandlerFunc) {
-
-	CheckParam(method, pattern)
-	parts := parsePattern(pattern)
-
-	key := method + "-" + pattern
-
-	root, ok := r.roots[method]
-	if !ok {
-		root = new(node)
-		root.fullPath = "/"
-		r.roots[method] = root
+	if pattern[0] != '/' {
+		panic("path must start with '/'")
 	}
-
-	root.insertChild(pattern, parts, 0)
-
-	r.handlers[key] = handlerFunc
+	if method == "" {
+		panic("method name is not allowed to be empty")
+	}
+	if len(handlerFunc) == 0 {
+		panic("null handlers")
+	}
+	root := r.methodTree.GetRoot(method)
+	if root == nil {
+		root = newNode()
+		r.methodTree = append(r.methodTree, &methodTree{
+			method: method,
+			root:   root,
+		})
+	}
+	root.addRoute(pattern, handlerFunc)
 
 }
 
@@ -44,53 +45,27 @@ func (r *router) handler(c *Context) {
 
 	path := c.request.URL.Path
 	method := c.Method
-	n, params := r.getRouter(method, path)
-	if n == nil {
-		panic("router cannot found")
+
+	matched, _ := regexp.MatchString(httpMethodReg, c.Method)
+	if !matched {
+		panic("http method" + c.Method + "is not valid")
 	}
 
-	c.Params = params
-
-	key := method + "-" + n.fullPath
-
-	handlerFunc, ok := r.handlers[key]
-	if !ok {
-		panic("get function failed")
-	}
-	c.handlers = append(c.handlers, handlerFunc...)
-	c.Next()
-
-}
-
-func (r *router) getRouter(method string, path string) (*node, map[string]string) {
-
-	parts := parsePattern(path)
-	params := make(map[string]string)
-
-	root, ok := r.roots[method]
-	if !ok {
-		return nil, nil
-	}
-
-	targetNode := root.search(parts, 0)
-
-	if targetNode != nil {
-		patternParts := parsePattern(targetNode.fullPath)
-
-		for index, part := range patternParts {
-
-			if part[0] == ':' {
-				params[part[1:]] = parts[index]
-			}
-			if part[0] == '*' && len(part) > 1 {
-				params[part[1:]] = strings.Join(parts, "/")
-			}
-
+	for _, tree := range r.methodTree {
+		if tree.method != method {
+			continue
 		}
-		return targetNode, params
-
+		root := tree.root
+		value := root.Search(path)
+		if value.params != nil {
+			c.Params = value.params
+		}
+		if value.handlers != nil {
+			c.handlers = append(c.handlers, value.handlers...)
+			c.FullPath = value.fullPath
+			c.handlers[0](c)
+			c.Next()
+		}
 	}
-
-	return nil, nil
 
 }

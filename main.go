@@ -1,40 +1,49 @@
 package main
 
 import (
-	"MiniArch/golangorm"
-	"MiniArch/golangorm/session"
+	"MiniArch/giu"
 	"fmt"
-	_ "github.com/go-sql-driver/mysql"
 )
 
-type student struct {
-	Name string `golorm:"PrimaryKey;default:not null"`
-	Age  int64
-}
-
-func (s *student) BeforeInsert(session *session.Session) {
-
-	s.Age += 100
-
-	fmt.Println("Hello,-->BeforeInsert")
-}
-
-//func Hello(value ...interface{}) {
-//	fmt.Println("Hello world", value)
-//}
-
 func main() {
-	//[user[:password]@][net[(addr)]]/dbname[?param1=value1&paramN=valueN]
-	db := golangorm.Open("mysql", "root:wjb20031205@tcp(localhost:3306)/douyin_projoect")
-	defer db.Close()
 
-	s := session.New(db.DB(), "mysql")
+	//engine.GET("/:app", handler)
+	//engine.GET("/:ap", handler)
 
-	var u student
+	//var testSet = []string{
+	//	"/hi",
+	//	"/contact",
+	//	"/co",
+	//	"/c",
+	//	"/a",
+	//	"/ab",
+	//	"/doc/",
+	//	"/doc/go_faq.html",
+	//	"/doc/go1.html",
+	//	"/α",
+	//	"/β",
+	//	"/hello/",
+	//	"/nihao/",
+	//}
+	handler := func(ctx *giu.Context) {
+		fmt.Println("Hello,This is " + ctx.FullPath)
+	}
+	//engine := gin.New()
+	//for _, s := range pathSet {
+	//	engine.GET(s, handler)
+	//}
+	//engine.Run(":8080")
+	//special := [...]string{
+	//	"/:cc",
+	//	"/:cc/cc",
+	//	"/:cc/:dd/ee",
+	//	"/:cc/:dd/:ee/ff",
+	//}
 
-	s.Model(&student{}).Insert(&student{Name: "张三", Age: 10}, &student{Name: "李四", Age: 15})
-	//s.Model(&student{}).Where("Age > 91").Find(&u)
-
-	fmt.Println(&u)
-
+	engine := giu.New()
+	engine.GET("/usr/http", handler)
+	engine.Run(":8080")
+	//fmt.Println(special)
+	//fmt.Println(root)
+	//root.AddNode("")
 }

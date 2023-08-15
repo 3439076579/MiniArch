@@ -39,7 +39,3 @@ func parsePattern(pattern string) []string {
 	return parts
 
 }
-
-func longestPrefix() {
-
-}

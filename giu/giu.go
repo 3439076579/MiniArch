@@ -7,6 +7,7 @@ import (
 )
 
 type HandlerFunc func(c *Context)
+type HandlerChain []HandlerFunc
 
 type any = interface{}
 
@@ -47,11 +48,9 @@ func (r *Engine) ServeHTTP(w http.ResponseWriter, request *http.Request) {
 	ctx.newContext(w, request)
 
 	for _, group := range r.allGroup {
-
 		if strings.HasPrefix(request.URL.Path, group.prefix) {
 			middleware = append(middleware, group.middleware...)
 		}
-
 	}
 
 	ctx.handlers = middleware
